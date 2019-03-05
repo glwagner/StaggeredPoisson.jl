@@ -160,13 +160,13 @@ are stored in `solver`.
 """
 function solve_poisson!(f, ϕ, solver)
     # Transform source term
-    fwd_transforms!(f.data, solver)
+    fwd_transforms!(f, solver)
 
     # Solve Poisson!
-    @. ϕ.data = f.data / (solver.eigenvals.kx² + solver.eigenvals.ky² + solver.eigenvals.kz²)
-    ϕ.data[1, 1, 1] = 0 # Set domain  mode to zero
+    @. ϕ = f / (solver.eigenvals.kx² + solver.eigenvals.ky² + solver.eigenvals.kz²)
+    ϕ[1, 1, 1] = 0 # Set domain  mode to zero
 
     # Transform solution
-    bwd_transforms!(ϕ.data, solver)
+    bwd_transforms!(ϕ, solver)
     return nothing
 end

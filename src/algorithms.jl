@@ -45,11 +45,11 @@ end
 function bwd_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:NDCT}
     solver.xy_bwd_transform! * a
     solver.z_bwd_transform! * a
-    @. a = a / (2*size(a, 3))
+    @. a = real(a) / 2size(a, 3)
     return nothing
 end
 
-function bwd_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:NDCT}
+function bwd_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:NFFT}
     solver.xy_bwd_transform! * a
     # Do in-place IDCT with FFT in z-direction
     @. a *= solver.ifft2idct
@@ -64,7 +64,7 @@ end
 Solve Poisson's equation,
 
 ``
-\triangle \phi = f
+\\triangle \\phi = f
 ``
 
 for `ϕ` with the source term `f`, using `solver`.
@@ -77,7 +77,7 @@ function solve_poisson!(ϕ, f, solver)
 
     # Solve Poisson!
     @. ϕ = f / (solver.eigenvals.kx² + solver.eigenvals.ky² + solver.eigenvals.kz²)
-    ϕ[1, 1, 1] = 0 # Set domain  mode to zero
+    ϕ[1, 1, 1] = 0 # Set domain mode to zero
 
     # Transform solution
     bwd_transforms!(ϕ, solver)
@@ -88,4 +88,11 @@ function solve_poisson!(ϕ, f, solver::PoissonSolver_PPN{NeumannFFT{R}}) where R
     # permute f
     solve_poisson!(ϕ, f, solver)
     return nothing
+end
+
+function solve_poisson(f, solver)
+    ϕ = similar(f, cxeltype(f))
+    ϕ .= 0
+    solve_poisson!(ϕ, f, solver)
+    return ϕ
 end

@@ -29,7 +29,9 @@ catch
     false
 end
 
-const solver_eltype = Complex{Float64} # Enforce Float64 type for solver
+const dim = 3 # this is a 3d code.
+const solver_float_type = Float64
+const solver_eltype = Complex{solver_float_type} # Enforce Float64 type for solver
 
 macro hascuda(ex)
     return HAVE_CUDA ? :($(esc(ex))) : :(nothing)

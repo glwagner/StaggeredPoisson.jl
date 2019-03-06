@@ -32,28 +32,29 @@ function fwd_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, z
 end
 
 """
-    bwd_transforms!(a, solver)
+    inv_transforms!(a, solver)
 
 Perform backward transforms on `a` (typically, the solution
 to Poisson's equation) for `solver`, depending on device type and boundary conditions.
 """
-function bwd_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:P}
-    solver.xyz_bwd_transform! * a
+function inv_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:P}
+    solver.xyz_inv_transform! * a
+    @. a = real(a)
     return nothing
 end
 
-function bwd_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:NDCT}
-    solver.xy_bwd_transform! * a
-    solver.z_bwd_transform! * a
+function inv_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:NDCT}
+    solver.xy_inv_transform! * a
+    solver.z_inv_transform! * a
     @. a = real(a) / 2size(a, 3)
     return nothing
 end
 
-function bwd_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:NFFT}
-    solver.xy_bwd_transform! * a
+function inv_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:NFFT}
+    solver.xy_inv_transform! * a
     # Do in-place IDCT with FFT in z-direction
     @. a *= solver.ifft2idct
-    solver.z_bwd_transform! * a
+    solver.z_inv_transform! * a
     return nothing
 end
 
@@ -80,7 +81,7 @@ function solve_poisson!(ϕ, f, solver)
     ϕ[1, 1, 1] = 0 # Set domain mode to zero
 
     # Transform solution
-    bwd_transforms!(ϕ, solver)
+    inv_transforms!(ϕ, solver)
     return nothing
 end
 

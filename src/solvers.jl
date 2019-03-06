@@ -65,8 +65,8 @@ end
 Get the eigenvalues for Poisson's equation in a particular
 direction for boundary condition `bc`, grid size `N` and extent `L`.
 """
-get_eigenvalues(::Type{Periodic}, N, L) = [ (2N * sin( (i-1)*π/N  ) / L)^2 for i=1:N]
-get_eigenvalues(::Type{Neumann},  N, L) = [ (2N * sin( (i-1)*π/2N ) / L)^2 for i=1:N]
+get_eigenvalues(::Type{Periodic}, N, L)              = [ (2N * sin( (i-1)*π/N  ) / L)^2 for i=1:N ]
+get_eigenvalues(::Type{T},  N, L) where T <: Neumann = [ (2N * sin( (i-1)*π/2N ) / L)^2 for i=1:N ]
 
 #
 # Solvers
@@ -74,7 +74,8 @@ get_eigenvalues(::Type{Neumann},  N, L) = [ (2N * sin( (i-1)*π/2N ) / L)^2 for 
 # PoissonSolver_XYZ is a PoissonSolver with boundary conditions
 # X, Y, and Z in the x, y, and z directions, respectively.
 
-size(solver::AbstractPoissonSolver) = solver.N
+Base.size(solver::AbstractPoissonSolver) = solver.N
+Base.size(solver::AbstractPoissonSolver, d) = solver.N[d]
 domain(solver::AbstractPoissonSolver) = solver.L
 
 struct PoissonSolver_PPP{D, A, T1, T2} <: AbstractPoissonSolver{Periodic, Periodic, Periodic, D}
@@ -86,15 +87,15 @@ struct PoissonSolver_PPP{D, A, T1, T2} <: AbstractPoissonSolver{Periodic, Period
 end
 
 struct PoissonSolver_PPN{Nbc<:Neumann, D, Ak, As,
-                         T1, T2, T3, T4} <: AbstractPoissonSolver{D, Periodic, Periodic, Nbc}
+                         T1, T2, T3, T4} <: AbstractPoissonSolver{Periodic, Periodic, Nbc, D}
     N                 :: NTuple{dim, Int}
     L                 :: NTuple{dim, solver_float_type}
     neumann_bc        :: Nbc
     eigenvals         :: PoissonEigenvalues{Ak, Periodic, Periodic, Nbc}
     xy_fwd_transform! :: T1
     z_fwd_transform!  :: T2
-    xy_inv_transform! :: T1
-    z_inv_transform!  :: T2
+    xy_inv_transform! :: T3
+    z_inv_transform!  :: T4
     fft2dct           :: As
     ifft2idct         :: As
 end
@@ -131,15 +132,15 @@ function PoissonSolver(D::CPU, ::Periodic, ::Periodic, ::NeumannDCT, N, L;
     Ak = get_array_type(D)
     eigenvals = PoissonEigenvalues(Ak, N, L, (Periodic, Periodic, NeumannDCT))
 
-     FFT_xy! = plan_fft!( planning_array, [1, 2]; flags=planner_flag)
-      DCT_z! = plan_r2r!( planning_array, FFTW.REDFT10, 3; flags=planner_flag)
-    IFFT_xy! = plan_ifft!(planning_array, [1, 2]; flags=planner_flag)
-     IDCT_z! = plan_r2r!( planning_array, FFTW.REDFT01, 3; flags=planner_flag)
+     FFT_xy! =      plan_fft!(  planning_array,               [1, 2]; flags=planner_flag)
+      DCT_z! = FFTW.plan_r2r!(  planning_array, FFTW.REDFT10,      3; flags=planner_flag)
+    IFFT_xy! =      plan_ifft!( planning_array,               [1, 2]; flags=planner_flag)
+     IDCT_z! = FFTW.plan_r2r!(  planning_array, FFTW.REDFT01,      3; flags=planner_flag)
 
     PoissonSolver_PPN{
         NeumannDCT, D, Ak, Nothing,
-        typeof(FFT_xy!), typeof(DCT_z!), typeof(IFFT_xy!), typeof(DCT_z!)}(
-        N, L, NeumannDCT(), eigenvals, FFT_xy!, DCT_z!, IFFT_xy!, DCT_z!, nothing, nothing)
+        typeof(FFT_xy!), typeof(DCT_z!), typeof(IFFT_xy!), typeof(IDCT_z!)}(
+        N, L, NeumannDCT(), eigenvals, FFT_xy!, DCT_z!, IFFT_xy!, IDCT_z!, nothing, nothing)
 end
 
 """
@@ -163,10 +164,10 @@ function PoissonSolver(D, ::Periodic, ::Periodic, ::NeumannFFT, N, L;
     Ak = get_array_type(D)
     eigenvals = PoissonEigenvalues(Ak, N, L, (Periodic, Periodic, NeumannFFT))
 
-    FFT_xy!  =  plan_fft!(planning_array, [1, 2])
-    FFT_z!   =  plan_fft!(planning_array, 3)
-    IFFT_xy! = plan_ifft!(planning_array, [1, 2])
-    IFFT_z!  = plan_ifft!(planning_array, 3)
+    FFT_xy!  =  plan_fft!(planning_array, [1, 2] )
+    FFT_z!   =  plan_fft!(planning_array,      3 )
+    IFFT_xy! = plan_ifft!(planning_array, [1, 2] )
+    IFFT_z!  = plan_ifft!(planning_array,      3 )
 
     Nx, Ny, Nz = N
     fft2dct, ifft2idct = get_fft2dct_factors(Nz)

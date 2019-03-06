@@ -10,7 +10,7 @@ N = (n, 1, 1)
 L = (2π, 2π, 2π)
 X0 = (-π, -π, -π)
 
-solver = PoissonSolver(Periodic(), Periodic(), Periodic(), N, L, planner_flag=FFTW.MEASURE)
+solver = PoissonSolver(Periodic(), Periodic(), NeumannDCT(), N, L, planner_flag=FFTW.MEASURE)
 
 d = 2π/10
 c(x, y, z) = sin(2x) # Δψ = c -> ψ = -c/16

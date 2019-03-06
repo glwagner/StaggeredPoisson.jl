@@ -46,7 +46,7 @@ end
 function inv_transforms!(a, solver::APS{xBC, yBC, zBC}) where {xBC<:P, yBC<:P, zBC<:NDCT}
     solver.xy_inv_transform! * a
     solver.z_inv_transform! * a
-    @. a = real(a) / 2size(a, 3)
+    @. a = real(a) / (2*solver.N[3])
     return nothing
 end
 
